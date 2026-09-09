@@ -28,9 +28,11 @@ VLM_TECHNICIAN_PROMPT_TEMPLATE = (
     "what you actually see (depth, spread, how structurally serious it looks) -- the "
     "detector does not provide severity, that judgment is yours to make. Then write a "
     "full technician's report.\n\n"
-    "All monetary values MUST be realistic current Egyptian market prices, given as "
-    "plain numbers in Egyptian Pounds (EGP) -- do not use USD or any other currency, "
-    "and do not include currency symbols or the word 'EGP' inside the numbers. "
+    "All monetary values MUST be realistic current Egyptian market prices. "
+    "For every cost, return a MIN and MAX value in Egyptian Pounds (EGP). "
+    "Use plain numbers only, without currency symbols or the word 'EGP' inside "
+    "the numbers. The total range should be consistent with the technician and "
+    "parts ranges. "
     "estimated_repair_time_hours must be a plain number of hours (decimals allowed, "
     "e.g. 1.5)."
 )
@@ -49,16 +51,57 @@ REPORT_SCHEMA = {
                     "severity": {"type": "string", "enum": ["minor", "moderate", "severe"]},
                     "description": {"type": "string"},
                 },
-                "required": ["damage_type", "location_on_vehicle", "severity", "description"],
+                "required": [
+                    "damage_type",
+                    "location_on_vehicle",
+                    "severity",
+                    "description",
+                ],
             },
         },
-        "repair_steps": {"type": "array", "items": {"type": "string"}},
-        "tools_and_equipment_needed": {"type": "array", "items": {"type": "string"}},
-        "estimated_repair_time_hours": {"type": "number"},
-        "technician_service_cost_egp": {"type": "number"},
-        "equipment_and_parts_cost_egp": {"type": "number"},
-        "total_estimated_cost_egp": {"type": "number"},
-        "notes": {"type": "string"},
+        "repair_steps": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "tools_and_equipment_needed": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "estimated_repair_time_hours": {
+            "type": "number",
+        },
+
+        # Money is returned as a realistic Egyptian Pound range
+        "technician_service_cost_egp": {
+            "type": "object",
+            "properties": {
+                "min": {"type": "number"},
+                "max": {"type": "number"},
+            },
+            "required": ["min", "max"],
+        },
+
+        "equipment_and_parts_cost_egp": {
+            "type": "object",
+            "properties": {
+                "min": {"type": "number"},
+                "max": {"type": "number"},
+            },
+            "required": ["min", "max"],
+        },
+
+        "total_estimated_cost_egp": {
+            "type": "object",
+            "properties": {
+                "min": {"type": "number"},
+                "max": {"type": "number"},
+            },
+            "required": ["min", "max"],
+        },
+
+        "notes": {
+            "type": "string",
+        },
     },
     "required": [
         "damage_assessment",
@@ -71,7 +114,6 @@ REPORT_SCHEMA = {
         "notes",
     ],
 }
-
 
 def _call_gemini(model_name: str, image_bytes: bytes, prompt: str):
     """Single call to one Gemini model. Raises on failure/timeout."""
