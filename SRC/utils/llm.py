@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 import concurrent.futures
 
 from google.genai import types as genai_types
@@ -94,28 +95,33 @@ def _call_gemini(model_name: str, image_bytes: bytes, prompt: str):
 
 
 def get_gemini_report(image_bytes: bytes, findings: list[dict]) -> dict:
-    """
-    Sends the image + YOLO findings to Gemini, trying each model in
-    GEMINI_MODEL_FALLBACK_CHAIN until one succeeds. Gemini looks at the image
-    itself to judge severity, and is forced (via response_schema) to return
-    the report already shaped correctly -- no manual formatting on our side.
-    """
     prompt = VLM_TECHNICIAN_PROMPT_TEMPLATE.format(
         findings_json=json.dumps(findings, ensure_ascii=False)
     )
 
     last_error = None
+    pipeline_start = time.time()
 
     for model_name in GEMINI_MODEL_FALLBACK_CHAIN:
+        attempt_start = time.time()
         try:
             raw_text = _call_gemini(model_name, image_bytes, prompt)
-            logger.info(f"Gemini success with: {model_name}")
+            elapsed = time.time() - attempt_start
+            total_elapsed = time.time() - pipeline_start
+            logger.info(f"[TIMING] Gemini success with {model_name} in {elapsed:.2f}s (total chain: {total_elapsed:.2f}s)")
+            print(f"[TIMING] Gemini success with {model_name} in {elapsed:.2f}s (total chain: {total_elapsed:.2f}s)")
             return json.loads(raw_text)
         except concurrent.futures.TimeoutError:
-            logger.warning(f"Gemini timeout ({REQUEST_TIMEOUT_SECONDS}s): {model_name}")
+            elapsed = time.time() - attempt_start
+            logger.warning(f"[TIMING] Gemini TIMEOUT on {model_name} after {elapsed:.2f}s")
+            print(f"[TIMING] Gemini TIMEOUT on {model_name} after {elapsed:.2f}s")
             last_error = f"Timeout: {model_name}"
         except Exception as e:
-            logger.warning(f"Gemini failed with {model_name}: {e}")
+            elapsed = time.time() - attempt_start
+            logger.warning(f"[TIMING] Gemini FAILED on {model_name} after {elapsed:.2f}s: {e}")
+            print(f"[TIMING] Gemini FAILED on {model_name} after {elapsed:.2f}s: {e}")
             last_error = e
 
+    total_elapsed = time.time() - pipeline_start
+    print(f"[TIMING] ALL models failed. Total chain time: {total_elapsed:.2f}s")
     raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")

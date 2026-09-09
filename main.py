@@ -10,9 +10,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[""],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=[""],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -70,7 +70,7 @@ async def analyze_image(file: UploadFile = File(...)):
                 detail="No image uploaded"
             )
 
-        result = run_pipeline(image_bytes)
+        result = run_pipeline(image_bytes, include_report=False)
 
         return Response(
             content=result["annotated_image"],

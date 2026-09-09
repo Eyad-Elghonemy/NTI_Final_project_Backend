@@ -62,17 +62,9 @@ def _run_yolo(image: np.ndarray, conf: float = 0.35):
     return findings, annotated
 
 
-def run_pipeline(image_bytes: bytes, conf: float = 0.35) -> dict:
-    """
-    Full pipeline: decode -> YOLO detect/segment -> annotate -> Gemini report.
+import time
 
-    Returns:
-        {
-            "findings": [...],          # raw YOLO detections (type, bbox, area %)
-            "annotated_image": bytes,   # JPEG bytes, damage highlighted + labeled
-            "report": {...}             # Gemini's technician report (severity, costs, steps...)
-        }
-    """
+def run_pipeline(image_bytes: bytes, conf: float = 0.35, include_report: bool = True) -> dict:
     image = _decode_image(image_bytes)
     findings, annotated = _run_yolo(image, conf=conf)
 
@@ -81,7 +73,9 @@ def run_pipeline(image_bytes: bytes, conf: float = 0.35) -> dict:
         raise ValueError("Failed to encode annotated image.")
     annotated_bytes = encoded.tobytes()
 
-    report = get_gemini_report(annotated_bytes, findings)
+    report = None
+    if include_report:
+        report = get_gemini_report(annotated_bytes, findings)
 
     return {
         "findings": findings,
