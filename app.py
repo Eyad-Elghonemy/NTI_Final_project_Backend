@@ -480,11 +480,11 @@ with tab_analyze:
             else:
                 try:
                     preview_img = Image.open(io.BytesIO(preview_bytes)).convert("RGB")
-                    st.image(preview_img, use_container_width=True)
+                    st.image(preview_img, width="stretch")
                 except Exception as e:
                     st.error(f"Couldn't preview this image: {e}")
 
-        analyze_clicked = st.button(":material/search: Analyze Image", use_container_width=True, disabled=uploaded_file is None)
+        analyze_clicked = st.button(":material/search: Analyze Image", width="stretch", disabled=uploaded_file is None)
         st.markdown("</div>", unsafe_allow_html=True)
 
     if uploaded_file is not None and analyze_clicked:
@@ -538,10 +538,10 @@ with tab_analyze:
 
         if st.session_state.annotated:
             img = Image.open(io.BytesIO(st.session_state.annotated)).convert("RGB")
-            st.image(img, use_container_width=True)
+            st.image(img, width="stretch")
         elif preview_bytes:
             try:
-                st.image(Image.open(io.BytesIO(preview_bytes)).convert("RGB"), use_container_width=True)
+                st.image(Image.open(io.BytesIO(preview_bytes)).convert("RGB"), width="stretch")
             except Exception as e:
                 st.error(f"Couldn't display this image: {e}")
         else:
@@ -668,13 +668,13 @@ with tab_analyze:
                 pdf_bytes = build_pdf(report, findings, image_bytes=st.session_state.annotated)
                 st.download_button(":material/description: Download PDF", data=pdf_bytes,
                                     file_name="cardd_damage_report.pdf",
-                                    mime="application/pdf", use_container_width=True)
+                                    mime="application/pdf", width="stretch")
             except Exception as e:
                 st.caption(f"PDF export unavailable: {e}")
         with e2:
             st.download_button(":material/data_object: Download JSON", data=json.dumps(data, indent=2, ensure_ascii=False),
                                 file_name="cardd_analysis.json", mime="application/json",
-                                use_container_width=True)
+                                width="stretch")
 
     elif data and not data.get("report"):
         st.warning("No Gemini report was returned for this image.")
@@ -699,7 +699,7 @@ with tab_history:
             with st.container():
                 cols = st.columns([0.12, 0.68, 0.2])
                 with cols[0]:
-                    st.image(Image.open(io.BytesIO(item["thumb"])).convert("RGB"), use_container_width=True)
+                    st.image(Image.open(io.BytesIO(item["thumb"])).convert("RGB"), width="stretch")
                 with cols[1]:
                     st.markdown(f"""
                     <div class="history-title">{item['filename']}</div>
@@ -713,7 +713,7 @@ with tab_history:
                             st.download_button(":material/description: PDF", data=pdf_bytes,
                                                 file_name=f"cardd_report_{i}.pdf",
                                                 mime="application/pdf", key=f"hist_pdf_{i}",
-                                                use_container_width=True)
+                                                width="stretch")
                         except Exception:
                             pass
                 st.markdown(f'<hr style="border-color:{PANEL_BORDER}; margin: 10px 0 18px 0;">', unsafe_allow_html=True)
