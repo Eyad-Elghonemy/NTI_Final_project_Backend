@@ -472,18 +472,23 @@ with tab_analyze:
         """, unsafe_allow_html=True)
 
         uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+        preview_bytes = uploaded_file.getvalue() if uploaded_file is not None else None
+
         if uploaded_file is not None:
-            try:
-                preview_img = Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB")
-                st.image(preview_img, use_container_width=True)
-            except Exception as e:
-                st.error(f"Couldn't preview this image: {e}")
+            if not preview_bytes:
+                st.error("Uploaded file appears to be empty — try re-uploading.")
+            else:
+                try:
+                    preview_img = Image.open(io.BytesIO(preview_bytes)).convert("RGB")
+                    st.image(preview_img, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Couldn't preview this image: {e}")
 
         analyze_clicked = st.button(":material/search: Analyze Image", use_container_width=True, disabled=uploaded_file is None)
         st.markdown("</div>", unsafe_allow_html=True)
 
     if uploaded_file is not None and analyze_clicked:
-        image_bytes = uploaded_file.getvalue()
+        image_bytes = preview_bytes
         with st.spinner("Running detection and generating report..."):
             try:
                 files = {"file": (uploaded_file.name, image_bytes, uploaded_file.type)}
@@ -534,8 +539,11 @@ with tab_analyze:
         if st.session_state.annotated:
             img = Image.open(io.BytesIO(st.session_state.annotated)).convert("RGB")
             st.image(img, use_container_width=True)
-        elif uploaded_file is not None:
-            st.image(Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB"), use_container_width=True)
+        elif preview_bytes:
+            try:
+                st.image(Image.open(io.BytesIO(preview_bytes)).convert("RGB"), use_container_width=True)
+            except Exception as e:
+                st.error(f"Couldn't display this image: {e}")
         else:
             st.markdown('<div class="empty-state">Upload and analyze a vehicle image to see results here.</div>', unsafe_allow_html=True)
 
