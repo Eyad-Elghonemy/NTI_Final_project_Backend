@@ -12,6 +12,7 @@ dependencies = [
     "python-multipart==0.0.32",
     "opencv-python-headless==4.10.0.84",
     "Pillow==10.4.0",
+    "google-genai==1.28.0",
 ]
 
 # ultralytics depends on opencv-python, which needs libGL (not present on
