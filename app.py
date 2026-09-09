@@ -220,6 +220,17 @@ def icon(name: str, size: int = 16, color: str | None = None, stroke_width: floa
     )
 
 
+@st.cache_data(ttl=20, show_spinner=False)
+def check_api_health(base_url: str) -> bool:
+    """Pings the API's /health endpoint. Cached briefly so we don't hit the
+    API on every rerun, but still refreshes often enough to be accurate."""
+    try:
+        resp = requests.get(f"{base_url}/health", timeout=5)
+        return resp.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
+
+
 def badge(severity: str) -> str:
     cls = SEVERITY_BADGE.get(severity.lower(), "badge-moderate")
     return f'<span class="badge {cls}">{severity.title()}</span>'
@@ -406,6 +417,10 @@ if "history" not in st.session_state:
 # ---------------------------------------------------------------------------
 # TOP BAR
 # ---------------------------------------------------------------------------
+api_is_up = check_api_health(API_BASE_URL)
+status_dot_cls = "cardd-dot" if api_is_up else "cardd-dot cardd-dot-down"
+status_text = "System Operational" if api_is_up else "API Unreachable"
+
 st.markdown(f"""
 <div class="cardd-topbar">
     <div class="cardd-brand">
@@ -415,7 +430,7 @@ st.markdown(f"""
             <div class="cardd-brand-sub">AI VEHICLE DAMAGE ASSESSMENT</div>
         </div>
     </div>
-    <div class="cardd-status"><span class="cardd-dot"></span> System Operational</div>
+    <div class="cardd-status"><span class="{status_dot_cls}"></span> {status_text}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -458,7 +473,11 @@ with tab_analyze:
 
         uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
         if uploaded_file is not None:
-            st.image(uploaded_file, use_container_width=True)
+            try:
+                preview_img = Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB")
+                st.image(preview_img, use_container_width=True)
+            except Exception as e:
+                st.error(f"Couldn't preview this image: {e}")
 
         analyze_clicked = st.button(":material/search: Analyze Image", use_container_width=True, disabled=uploaded_file is None)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -513,10 +532,10 @@ with tab_analyze:
         """, unsafe_allow_html=True)
 
         if st.session_state.annotated:
-            img = Image.open(io.BytesIO(st.session_state.annotated))
+            img = Image.open(io.BytesIO(st.session_state.annotated)).convert("RGB")
             st.image(img, use_container_width=True)
         elif uploaded_file is not None:
-            st.image(uploaded_file, use_container_width=True)
+            st.image(Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB"), use_container_width=True)
         else:
             st.markdown('<div class="empty-state">Upload and analyze a vehicle image to see results here.</div>', unsafe_allow_html=True)
 
@@ -672,7 +691,7 @@ with tab_history:
             with st.container():
                 cols = st.columns([0.12, 0.68, 0.2])
                 with cols[0]:
-                    st.image(item["thumb"], use_container_width=True)
+                    st.image(Image.open(io.BytesIO(item["thumb"])).convert("RGB"), use_container_width=True)
                 with cols[1]:
                     st.markdown(f"""
                     <div class="history-title">{item['filename']}</div>
