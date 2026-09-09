@@ -14,7 +14,7 @@ VERSION = os.getenv("VERSION")
 SECRET_API_KEY = os.getenv("SECRET_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SRC_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(SRC_PATH, 'artifacts', 'model.pt')
+MODEL_PATH = os.path.join(SRC_PATH, 'artifacts', 'model_yolo8.pt')
 
 
 REQUEST_TIMEOUT_SECONDS = 15
