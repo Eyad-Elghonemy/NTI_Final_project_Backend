@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.svg" alt="CarDD Logo" width="120" />
+<img src="logo.jpg" alt="CarDD Logo" width="120" />
 
 # CarDD — AI Vehicle Damage 
 **A computer-vision API that detects car damage and turns it into a full technician's report, wrapped in a modern Next.js control room.**
