@@ -20,7 +20,7 @@
 
 CarDD is a two-stage deep learning service that looks at a photo of a damaged vehicle, finds every damaged region, and turns those detections into a realistic Egyptian-market repair report. The project is a monorepo made of two independent apps that work together:
 
-- **`cardd-backend/`** — a FastAPI service that runs a trained YOLOv8-seg model to localize damage, then sends the annotated photo to Gemini for severity judgment, a repair plan, and cost/time estimates.
+- **`cardd-backend/`** — a FastAPI service that runs a trained YOLOv8-seg model to localize damage, then sends the YOLO findings (JSON only, no image) to Gemini for a severity estimate, repair plan, and cost/time estimates.
 - **`cardd-frontend/`** — a Next.js 14 (App Router) control room. It never talks to Gemini or loads the model itself — it uploads images through its own `/api/analyze` and `/api/analyze-image` route handlers, which proxy to the FastAPI backend, and renders the results, PDF/JSON export, and session history.
 
 ```
@@ -35,7 +35,7 @@ Browser  →  Next.js UI  →  Next.js API routes (proxy)  →  FastAPI backend 
 |---|---|
 | 🚀 **Async FastAPI backend** | Production-grade, non-blocking request handling via Uvicorn |
 | 🧠 **YOLOv8-seg detector** | Trained on the CarDD dataset to segment 6 damage classes |
-| 🤖 **Gemini technician report** | Vision-language model judges severity and writes repair steps, tools, time & cost |
+| 🤖 **Gemini technician report** | LLM estimates severity from the YOLO findings JSON and writes repair steps, tools, time & cost |
 | 🔁 **Model fallback chain** | Automatically retries a second Gemini model if the first one times out or fails |
 | 🖼️ **Annotated image output** | Returns the photo with detected damage regions highlighted and labeled |
 | 🧑‍💻 **Next.js 14 App Router UI** | Upload card, hero/landing page, analysis results, and history views |
@@ -66,8 +66,8 @@ Classes and labels follow the [CarDD dataset](https://cardd-ustc.github.io/) con
 Input image      →  uploaded vehicle photo (JPG/PNG)
 YOLOv8-seg        →  segmentation masks + bounding boxes per damage region
                        -> damage_type, bbox, area_pct_of_image
-Annotated image   →  masks + boxes drawn on the original photo
-Gemini (VLM)      →  looks at the annotated photo + YOLO findings as ground truth
+Annotated image   →  masks + boxes drawn on the original photo, returned to the user
+Gemini (LLM)      →  reads the YOLO findings JSON only (no image) as ground truth
                        -> severity, location, description
                        -> repair_steps, tools_and_equipment_needed
                        -> estimated_repair_time_hours
@@ -97,7 +97,6 @@ See the training notebooks (`yolo8n_training_25_epoch.ipynb`, `yolo8n_continue_t
 │   ├── inference.py                # Image decoding, YOLO inference, annotation
 │   ├── llm.py                      # Gemini prompt, response schema, fallback chain
 │   ├── pyproject.toml              # Backend project metadata and dependencies
-│   ├── requirements.txt            # Backend dependencies (pip-installable mirror)
 │   ├── .env.example                 # Environment variable template
 │   ├── artifacts/
 │   │   └── model_yolo8.pt          # Trained YOLOv8-seg weights (not tracked by Git)
@@ -181,7 +180,7 @@ cd <your-repo-folder>
 cd cardd-backend
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install .
 cp .env.example .env
 ```
 
