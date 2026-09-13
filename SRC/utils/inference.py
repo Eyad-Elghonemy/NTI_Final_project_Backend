@@ -23,9 +23,9 @@ def _run_yolo(image: np.ndarray, conf: float = 0.35):
     """
     Runs the segmentation model on the image. Returns:
       - findings: list of dicts (damage_type, bbox, area_pct_of_image) -- no
-        severity/cost here, that's Gemini's job once it sees the image.
+        severity/cost here, that's Gemini's job based on this JSON alone.
       - annotated: a copy of the image with each damage region highlighted
-        and labeled, ready to send to Gemini and to show the user.
+        and labeled, returned to the user (not sent to Gemini).
     """
     model = get_model()
     height, width = image.shape[:2]
@@ -75,7 +75,7 @@ def run_pipeline(image_bytes: bytes, conf: float = 0.35, include_report: bool = 
 
     report = None
     if include_report:
-        report = get_gemini_report(annotated_bytes, findings)
+        report = get_gemini_report(findings)
 
     return {
         "findings": findings,
