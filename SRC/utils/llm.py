@@ -16,17 +16,18 @@ DAMAGE_CLASSES = ["dent", "scratch", "crack", "glass shatter", "lamp broken", "t
 VLM_TECHNICIAN_PROMPT_TEMPLATE = (
     "You are an experienced car repair technician working in Egypt. "
     "A computer-vision pipeline (YOLOv8-seg) has already detected and localized "
-    "the damage on this vehicle. The attached photo is annotated with the detected "
-    "region(s) highlighted, and the JSON below lists exactly what the detector found "
-    "-- damage type/label, severity, bounding box, and the percentage of the image "
+    "the damage on this vehicle. No image is attached -- the JSON below is your "
+    "only source of information, and it lists exactly what the detector found "
+    "-- damage type/label, bounding box, and the percentage of the image "
     "each damaged area covers (derived from its segmentation mask):\n\n"
     "{findings_json}\n\n"
     "Treat this JSON as ground truth for WHICH damages exist, WHERE they are, and "
     "their type/size -- do not invent additional damage it doesn't mention, "
-    "and do not dismiss damage it does mention. Look closely at the highlighted "
-    "region(s) in the photo yourself and judge the SEVERITY of each damage based on "
-    "what you actually see (depth, spread, how structurally serious it looks) -- the "
-    "detector does not provide severity, that judgment is yours to make. Then write a "
+    "and do not dismiss damage it does mention. The detector does not provide "
+    "severity, so ESTIMATE the SEVERITY of each damage using the damage type and "
+    "the area_pct_of_image value as your main signals (e.g. a larger area for a "
+    "given damage type generally indicates a more severe case) -- use your general "
+    "technician experience to make this judgment reasonably. Then write a "
     "full technician's report.\n\n"
     "All monetary values MUST be realistic current Egyptian market prices. "
     "For every cost, return a MIN and MAX value in Egyptian Pounds (EGP). "
@@ -115,10 +116,8 @@ REPORT_SCHEMA = {
     ],
 }
 
-def _call_gemini(model_name: str, image_bytes: bytes, prompt: str):
+def _call_gemini(model_name: str, prompt: str):
     """Single call to one Gemini model. Raises on failure/timeout."""
-    image_part = genai_types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
-
     request_config = genai_types.GenerateContentConfig(
         response_mime_type="application/json",
         response_schema=REPORT_SCHEMA,
@@ -128,7 +127,7 @@ def _call_gemini(model_name: str, image_bytes: bytes, prompt: str):
         future = executor.submit(
             gemini_client.models.generate_content,
             model=model_name,
-            contents=[image_part, prompt],
+            contents=[prompt],
             config=request_config,
         )
         response = future.result(timeout=REQUEST_TIMEOUT_SECONDS)
@@ -136,7 +135,7 @@ def _call_gemini(model_name: str, image_bytes: bytes, prompt: str):
     return response.text
 
 
-def get_gemini_report(image_bytes: bytes, findings: list[dict]) -> dict:
+def get_gemini_report(findings: list[dict]) -> dict:
     prompt = VLM_TECHNICIAN_PROMPT_TEMPLATE.format(
         findings_json=json.dumps(findings, ensure_ascii=False)
     )
@@ -147,7 +146,7 @@ def get_gemini_report(image_bytes: bytes, findings: list[dict]) -> dict:
     for model_name in GEMINI_MODEL_FALLBACK_CHAIN:
         attempt_start = time.time()
         try:
-            raw_text = _call_gemini(model_name, image_bytes, prompt)
+            raw_text = _call_gemini(model_name, prompt)
             elapsed = time.time() - attempt_start
             total_elapsed = time.time() - pipeline_start
             logger.info(f"[TIMING] Gemini success with {model_name} in {elapsed:.2f}s (total chain: {total_elapsed:.2f}s)")
